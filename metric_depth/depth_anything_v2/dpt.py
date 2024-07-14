@@ -110,7 +110,7 @@ class DPTHead(nn.Module):
             nn.Conv2d(head_features_1 // 2, head_features_2, kernel_size=3, stride=1, padding=1),
             nn.ReLU(True),
             nn.Conv2d(head_features_2, 1, kernel_size=1, stride=1, padding=0),
-            nn.Sigmoid()
+            # nn.Sigmoid()
         )
     
     def forward(self, out_features, patch_h, patch_w):
@@ -174,7 +174,13 @@ class DepthAnythingV2(nn.Module):
         self.pretrained = DINOv2(model_name=encoder)
         
         self.depth_head = DPTHead(self.pretrained.embed_dim, features, use_bn, out_channels=out_channels, use_clstoken=use_clstoken)
-    
+        self._freeze_stages()
+        
+    def _freeze_stages(self):
+        self.eval()
+        for m in self.pretrained.parameters():
+            m.requires_grad = False
+
     def forward(self, x):
         patch_h, patch_w = x.shape[-2] // 14, x.shape[-1] // 14
         
@@ -197,8 +203,8 @@ class DepthAnythingV2(nn.Module):
     def image2tensor(self, raw_image, input_size=518):        
         transform = Compose([
             Resize(
-                width=input_size,
-                height=input_size,
+                width=322,
+                height=238,
                 resize_target=False,
                 keep_aspect_ratio=True,
                 ensure_multiple_of=14,

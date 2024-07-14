@@ -5,10 +5,24 @@ import matplotlib
 import numpy as np
 import os
 import torch
-
+import matplotlib.pyplot as plt
 from depth_anything_v2.dpt import DepthAnythingV2
 
-
+def load_depth(depth_path):
+    """ Load depth image from img_path. """
+    # depth_path = img_path + '_depth.png'
+    depth = cv2.imread(depth_path, -1)
+    if len(depth.shape) == 3:
+        # This is encoded depth image, let's convert
+        # NOTE: RGB is actually BGR in opencv
+        depth16 = depth[:, :, 1]*256 + depth[:, :, 2]
+        depth16 = np.where(depth16==32001, 0, depth16)
+        depth16 = depth16.astype(np.uint16)
+    elif len(depth.shape) == 2 and depth.dtype == 'uint16':
+        depth16 = depth
+    else:
+        assert False, '[ Error ]: Unsupported depth type.'
+    return depth16
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Depth Anything V2 Metric Depth Estimation')
     
@@ -36,7 +50,11 @@ if __name__ == '__main__':
     }
     
     depth_anything = DepthAnythingV2(**{**model_configs[args.encoder], 'max_depth': args.max_depth})
-    depth_anything.load_state_dict(torch.load(args.load_from, map_location='cpu'))
+    state_dict=torch.load(args.load_from, map_location='cpu')
+    my_state_dict = {} 
+    for key in state_dict['model'].keys(): 
+        my_state_dict[key.replace('module.', '')] = state_dict['model'][key]
+    depth_anything.load_state_dict(my_state_dict)
     depth_anything = depth_anything.to(DEVICE).eval()
     
     if os.path.isfile(args.img_path):
@@ -50,13 +68,15 @@ if __name__ == '__main__':
     
     os.makedirs(args.outdir, exist_ok=True)
     
-    cmap = matplotlib.colormaps.get_cmap('Spectral')
+    # cmap = matplotlib.colormaps.get_cmap('Spectral')
+    cmap = plt.cm.get_cmap('Spectral_r')
     
     for k, filename in enumerate(filenames):
         print(f'Progress {k+1}/{len(filenames)}: {filename}')
         
         raw_image = cv2.imread(filename)
-        
+        # depth_path = filename.replace('_color.png','_depth.png')
+        # depth_gt = load_depth(depth_path)/1000
         depth = depth_anything.infer_image(raw_image, args.input_size)
         
         if args.save_numpy:

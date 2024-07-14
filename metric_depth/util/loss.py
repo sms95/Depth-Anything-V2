@@ -14,3 +14,13 @@ class SiLogLoss(nn.Module):
                           self.lambd * torch.pow(diff_log.mean(), 2))
 
         return loss
+
+class SmoothL1Loss(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.loss_fun = nn.SmoothL1Loss(reduction='none')
+
+    def forward(self, pred, target, valid_mask):
+        loss= self.loss_fun(pred, target)
+
+        return torch.sum(loss)/torch.sum((valid_mask>0))

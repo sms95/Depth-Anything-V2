@@ -19,10 +19,10 @@ from dataset.kitti import KITTI
 from dataset.vkitti2 import VKITTI2
 from depth_anything_v2.dpt import DepthAnythingV2
 from util.dist_helper import setup_distributed
-from util.loss import SiLogLoss
+from util.loss import SiLogLoss, SmoothL1Loss
 from util.metric import eval_depth
 from util.utils import init_log
-
+from pdb import set_trace
 
 parser = argparse.ArgumentParser(description='Depth Anything V2 for Metric Depth Estimation')
 
@@ -62,7 +62,7 @@ def main():
     if args.dataset == 'hypersim':
         trainset = Hypersim('dataset/splits/hypersim/train.txt', 'train', size=size)
     elif args.dataset == 'vkitti':
-        trainset = VKITTI2('dataset/splits/vkitti2/train.txt', 'train', size=size)
+        trainset = VKITTI2('/dataset/CAMERA25/nuscenes_petr_6d/nuscenes2d_temporal_infos_train_val.txt', 'train', size= (322, 238))
     else:
         raise NotImplementedError
     trainsampler = torch.utils.data.distributed.DistributedSampler(trainset)
@@ -71,7 +71,7 @@ def main():
     if args.dataset == 'hypersim':
         valset = Hypersim('dataset/splits/hypersim/val.txt', 'val', size=size)
     elif args.dataset == 'vkitti':
-        valset = KITTI('dataset/splits/kitti/val.txt', 'val', size=size)
+        valset = VKITTI2('/dataset/CAMERA25/nuscenes_petr_6d/nuscenes2d_temporal_infos_val.txt', 'val', size= (322, 238))
     else:
         raise NotImplementedError
     valsampler = torch.utils.data.distributed.DistributedSampler(valset)
@@ -95,7 +95,7 @@ def main():
     model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[local_rank], broadcast_buffers=False,
                                                       output_device=local_rank, find_unused_parameters=True)
     
-    criterion = SiLogLoss().cuda(local_rank)
+    criterion = SmoothL1Loss().cuda(local_rank) #SiLogLoss().cuda(local_rank)
     
     optimizer = AdamW([{'params': [param for name, param in model.named_parameters() if 'pretrained' in name], 'lr': args.lr},
                        {'params': [param for name, param in model.named_parameters() if 'pretrained' not in name], 'lr': args.lr * 10.0}],
@@ -127,9 +127,9 @@ def main():
                 img = img.flip(-1)
                 depth = depth.flip(-1)
                 valid_mask = valid_mask.flip(-1)
-            
+
             pred = model(img)
-            
+      
             loss = criterion(pred, depth, (valid_mask == 1) & (depth >= args.min_depth) & (depth <= args.max_depth))
             
             loss.backward()
@@ -160,7 +160,7 @@ def main():
         for i, sample in enumerate(valloader):
             
             img, depth, valid_mask = sample['image'].cuda().float(), sample['depth'].cuda()[0], sample['valid_mask'].cuda()[0]
-            
+
             with torch.no_grad():
                 pred = model(img)
                 pred = F.interpolate(pred[:, None], depth.shape[-2:], mode='bilinear', align_corners=True)[0, 0]

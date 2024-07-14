@@ -2,16 +2,17 @@
 now=$(date +"%Y%m%d_%H%M%S")
 
 epoch=120
-bs=4
-gpus=8
+bs=20
+gpus=4
 lr=0.000005
 encoder=vitl
-dataset=hypersim # vkitti
-img_size=518
-min_depth=0.001
+dataset=vkitti
+img_size=322
+min_depth=0.1
 max_depth=20 # 80 for virtual kitti
 pretrained_from=../checkpoints/depth_anything_v2_${encoder}.pth
-save_path=exp/hypersim # exp/vkitti
+save_path=exp/real_120
+export CUDA_VISIBLE_DEVICES=1,2,3,4,5,6,7
 
 mkdir -p $save_path
 

@@ -184,7 +184,7 @@ class DepthAnythingV2(nn.Module):
         return depth.squeeze(1)
     
     @torch.no_grad()
-    def infer_image(self, raw_image, input_size=518):
+    def infer_image(self, raw_image, input_size=(518)):
         image, (h, w) = self.image2tensor(raw_image, input_size)
         
         depth = self.forward(image)
@@ -196,8 +196,8 @@ class DepthAnythingV2(nn.Module):
     def image2tensor(self, raw_image, input_size=518):        
         transform = Compose([
             Resize(
-                width=input_size,
-                height=input_size,
+                width=322,
+                height=238,
                 resize_target=False,
                 keep_aspect_ratio=True,
                 ensure_multiple_of=14,

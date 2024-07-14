@@ -66,6 +66,12 @@ python run.py \
   --max-depth 20 \
   --img-path <path> --outdir <outdir> [--input-size <size>] [--save-numpy]
 
+python run.py \
+  --encoder vitl \
+  --load-from exp/real/latest.pth \
+  --max-depth 20 \
+  --img-path /dataset/CAMERA25/real_test/scene_1/0135_color.png --outdir exp/real/ 
+
 # outdoor scenes
 python run.py \
   --encoder vitl \
